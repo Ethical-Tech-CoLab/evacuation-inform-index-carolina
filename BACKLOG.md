@@ -137,3 +137,58 @@ crisis, from INFORM or hand-curated into `geo/locations.csv`.
 - `data.js` still carries the superseded country-centroid `lat`/`lng`. They are
   no longer read by the map, but they are what `geo/build_geo.py` measures
   corrections against, so removing them is not free.
+
+---
+
+## Credibility review — 2026-07-27
+
+A hostile-but-fair peer-review sweep of the report copy (mirrored on the site in
+`website/src/content/publications/evacuation-inform-index.ts`). Fix in both.
+
+### Verify the INFORM weights stated as fact
+
+§03 asserts flatly that INFORM Severity combines "31 core indicators into three
+weighted dimensions: impact at 20%, conditions of affected people at 50%,
+complexity at 30%." Wrong weights would undermine the tool's whole
+proxy-substitution argument. Confirm the indicator count and dimension weights
+against the current ACAPS/JRC methodology and correct if they differ.
+
+---
+
+## Peer-review findings (from PEER-REVIEW.md — "major revisions")
+
+Full referee report in [PEER-REVIEW.md](PEER-REVIEW.md). Verify each against the
+current report copy and check off any already fixed.
+
+Major:
+- [ ] **The central proxy is asserted, not validated (§4.2).** INFORM
+      "Complexity" measures humanitarian *access for responders*, not the
+      danger civilians face self-evacuating a corridor. Add a subsection naming
+      1–2 crises where the two pull apart, the expected bias direction, and why
+      the mapping is still defensible.
+- [ ] **The headline ratio is arithmetically fragile (§4.1).** Dividing two
+      rescaled ordinal 5-point scores treats them as ratio-scale; the 0.5
+      denominator floor is arbitrary and can swing the ratio 2.5×; equal ratios
+      hide different absolute stakes. Justify or drop the ratio-scale treatment,
+      report a floor-sensitivity check, and consider demoting the ratio beneath
+      the two-component display.
+- [ ] **Designed vs built is interleaved (§4.3, §5.6 vs §8.3, §11.5).** Specific
+      weight tables (50/35/15, etc.) and a twelve-factor profile are mostly
+      "designed but not yet built" (only layer one is live). Add an
+      implemented-vs-planned table near the top so the plan isn't read as operative.
+- [ ] **No demonstration.** No named crisis is carried end-to-end. Add one
+      worked example with real numbers (staying, evacuating, ratio, endangerment/
+      feasibility, one vulnerability profile).
+
+Internal inconsistencies to reconcile: "we resist a single number" vs "a single
+ratio" (state the ratio is a pointer, not a verdict); multiplier saturation —
+ten of twelve factors raise risk but the ±0.30 bound saturates after five 0.06
+steps, contradicting the "cumulative" premise; "Risk of Evacuating" (§4.2) and
+"Feasibility" (§5.3) are inverses of the same input but never reconciled — state
+evac-risk ≈ (1 − feasibility).
+
+Minor: data currency — state the 104-crises snapshot date and cadence (m1);
+normalize the mixed citation styles and label CERAI/FLARE as internal projects
+(m2); convert prose weight passages to the implemented-vs-planned table (m3).
+**[Verify]** the "two-witness standard" attributed to GFEMS's FLARE (§7.2) —
+supply a followable citation or mark FLARE/CERAI as internal sibling projects.
