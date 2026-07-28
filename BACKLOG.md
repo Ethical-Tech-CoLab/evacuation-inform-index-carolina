@@ -211,13 +211,37 @@ crisis, from INFORM or hand-curated into `geo/locations.csv`.
 A hostile-but-fair peer-review sweep of the report copy (mirrored on the site in
 `website/src/content/publications/evacuation-inform-index.ts`). Fix in both.
 
-### Verify the INFORM weights stated as fact
+### Verify the INFORM weights stated as fact — **VERIFIED CORRECT 2026-07-28**
 
-§03 asserts flatly that INFORM Severity combines "31 core indicators into three
+§03 asserted that INFORM Severity combines "31 core indicators into three
 weighted dimensions: impact at 20%, conditions of affected people at 50%,
-complexity at 30%." Wrong weights would undermine the tool's whole
-proxy-substitution argument. Confirm the indicator count and dimension weights
-against the current ACAPS/JRC methodology and correct if they differ.
+complexity at 30%."
+
+**Checked against ACAPS' published methodology and confirmed exact** — 31 core
+indicators, three dimensions, 20/50/30, and ACAPS' own description of the
+weights as a current best estimate to be refined by expert analysis and
+statistical methods (which is what the report leans on to place its own
+provisional weights in company). No correction needed in either copy.
+
+### The ten-to-five rescaling does not exist — **FIXED 2026-07-28**
+
+Found while verifying the above, and worse than the thing being verified. The
+paper (§4.2, §4.2b), the tool's own methodology notes in `index.html`, and the
+newly written §4.1.1 all described Conditions and Complexity as "rescaled from
+INFORM's ten point scale to the five point scale the EII uses."
+
+**There is no such step.** INFORM scores indicators on 1–5 and publishes
+dimension scores on that same scale, so the values arrive ready to use: `rss ==
+cond` and `rse == cplx` for **104 of 104 crises** in `data.js`. The ten-point
+figure is INFORM's *composite* severity index across all three dimensions,
+which the EII never takes as an input. The claim described an arithmetic step
+that no code performs.
+
+Corrected in all four places, with the withdrawal stated rather than quietly
+patched. Two consequences worth noting: the peer review's request for a
+sensitivity check on "the 10-to-5-point rescaling" dissolves, since there is
+nothing to be sensitive to; and no published number changes, because the
+described step was never applied to any of them.
 
 ---
 
@@ -277,9 +301,11 @@ claimed as the project's own.
 
 These were raised in *What's missing* and are not closed by the current pass:
 
-- **Sensitivity analysis beyond the floor.** The 10-to-5-point rescaling and the
-  0.06 multiplier step are still uncharacterised. A reader cannot tell whether
-  the rankings are robust or knife-edge.
+- **Sensitivity analysis beyond the floor.** The 0.06 multiplier step is still
+  uncharacterised. (The reviewer also asked about the 10-to-5 rescaling; that
+  question is void — no such rescaling exists, see the credibility section
+  above.) A reader still cannot tell whether the rankings are robust or
+  knife-edge.
 - **Comparison against fuller CERAI outputs.** The most natural available
   validation, and it needs CERAI itself.
 - **§4.2a's own finding, unaddressed structurally.** The ratio compresses toward

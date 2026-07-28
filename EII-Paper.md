@@ -129,7 +129,7 @@ A value above 1.0 indicates that evacuation carries more risk than remaining. A 
 
 Two safeguards apply. Ratios become unstable as the denominator approaches zero, so a floor of 0.5 on a five point scale is applied to the staying score. And the ratio is never shown alone: both component scores accompany it wherever it appears. On the current dataset the floor never engages — the lowest observed staying score is 1.36 — so no published figure depends on it; 4.2a gives the check.
 
-**4.1.1 What kind of quantity this is, and what division assumes.** Dividing one score by another treats both as ratio-scale quantities: numbers with a true zero, where "twice as much" is meaningful. INFORM's underlying severity bands do not clearly meet that standard. They are constructed from indicators aggregated into a ten-point scale that behaves as an ordinal ranking with interval-like spacing, and the EII then rescales to five points. There is no defensible sense in which a Conditions score of 4 represents exactly twice the severity of a 2, and therefore no fully defensible sense in which the EDI's "2.60" means evacuation is 2.6 times riskier than staying.
+**4.1.1 What kind of quantity this is, and what division assumes.** Dividing one score by another treats both as ratio-scale quantities: numbers with a true zero, where "twice as much" is meaningful. INFORM's underlying severity bands do not clearly meet that standard. They are built by aggregating indicators that are each scored on a one to five ordinal band, and the dimension score inherits that character: it behaves as a ranking with interval-like spacing rather than as a measured quantity. There is no defensible sense in which a Conditions score of 4 represents exactly twice the severity of a 2, and therefore no fully defensible sense in which the EDI's "2.60" means evacuation is 2.6 times riskier than staying.
 
 The honest position is that the division is a *comparison device*, not a measurement. What the EDI supports is ordering and sign — whether evacuation scores worse than staying, and roughly how far apart they sit — not arithmetic on the result. Two consequences follow, and the prototype accepts both. Differences of a few hundredths between crises carry no meaning and should not be ranked against each other. And the EDI must never be averaged, summed across crises, or fed into a further calculation, because those operations require exactly the ratio-scale property the inputs lack.
 
@@ -150,7 +150,7 @@ The EII maps two of those dimensions onto its own question:
 | Conditions of affected people | Risk Score for Staying | How severe it is to remain in place |
 | Complexity of the crisis (access constraints, society and safety, operating environment) | Risk Score for Evacuating | How difficult and dangerous it is to move |
 
-Both are rescaled from the INFORM ten point scale to the five point scale the EII uses.
+Both are used exactly as INFORM publishes them. INFORM scores its indicators on a one to five scale and aggregates them into dimension scores on that same scale, so Conditions and Complexity arrive already on the five point scale the EII uses and no conversion is applied: RSS equals the published Conditions score and RSE equals the published Complexity score, for all 104 crises. The ten point figure that also appears in INFORM outputs, and in the worked examples below, is the *composite* severity index across all three dimensions, which the EII does not use as an input. Earlier drafts of this report, and the tool's own methodology notes, described a rescaling from ten points to five. There is no such step, and the claim has been withdrawn.
 
 The choice is defensible on its face. Complexity in INFORM measures precisely the conditions that obstruct movement: humanitarian access, safety of operations, and the operating environment. It is nonetheless a substitution, and the prototype labels it as one.
 
@@ -188,7 +188,7 @@ The review notes that the index is described but never run. Two crises, taken fr
 
 **Sudan — Complex crisis.** INFORM severity 5, INFORM index 9.6.
 
-1. INFORM Conditions of affected people = 4.87 on the rescaled five-point scale → **RSS = 4.87**.
+1. INFORM Conditions of affected people = 4.87, used as published → **RSS = 4.87**.
 2. INFORM Complexity = 4.73 → **RSE = 4.73**.
 3. Denominator floor check: RSS 4.87 ≥ 0.5, so the floor does not engage.
 4. **EDI = RSE / RSS = 4.73 / 4.87 = 0.97**.
@@ -332,7 +332,7 @@ The distinction matters. A demographic list alone would treat vulnerability as a
 
 9.9 Optional damage layer. Without a self hosted deployment, physical damage evidence is simply absent from the assessment.
 
-9.10 Partial road access coverage. The road access search has been run for 42 of the 104 crises. The remaining 62 have never been searched at all, which means an absence of road reports carries two entirely different meanings that the data cannot distinguish from the outside: searched and nothing found, or never looked at. Eleven crises currently carry reports. On a tool about whether people can leave, the silent reading of a crisis with no reports, that its roads are therefore passable, is the dangerous one, so both the map layer and the crisis panel state the coverage split rather than presenting an unpinned crisis as a clear one. Completing the search is a matter of search credits, not of method.
+9.10 Road access is searched everywhere, but read from prose. The road access search has now been run for all 104 crises, so an absence of reports means one thing rather than two: the search ran and returned nothing. Fourteen crises carry reports. What remains is the harder limit, and it is a limit of method rather than of coverage. The signal is read from news prose by keyword matching, which has no notion of what a sentence is about: an item reporting an airstrike can be classified as a road blockage because the surrounding words match. Items are gated for recency and for whether the publisher is a newsroom rather than a social platform or a travel wiki, but nothing checks whether the road described is the road that matters, and an item can be attributed to a country because that country is named as a party while the route it describes lies elsewhere. The pin marks the crisis, never the blockage, because news prose carries no coordinates. The layer should be read as a prompt to look, not as a map of which roads are open.
 
 9.11 Correlation, not causation. The index prioritises attention. It is decision support and must not be the sole basis for an evacuation decision.
 
