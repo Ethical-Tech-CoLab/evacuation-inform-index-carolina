@@ -119,27 +119,46 @@ now — but the attribution problem itself is unchanged and will recur.*
 
 ## Road access — coverage
 
-### 7. 62 of 104 crises have never been searched
+### 7. 62 of 104 crises have never been searched — **CLOSED 2026-07-28**
 
-The largest single gap, and the layer states it: an unpinned crisis is ambiguous
-between *searched, nothing found* and *never searched*, and the silent reading —
-no pin, roads fine — is the dangerous one.
+The largest single gap: an unpinned crisis was ambiguous between *searched,
+nothing found* and *never searched*, and the silent reading — no pin, roads
+fine — is the dangerous one.
 
-**To close.** `python3 snapshot_roads.py` (1 Tavily credit per crisis), then
-`python3 build_roads_layer.py`, then commit `snapshot/`.
+**Fixed.** `snapshot_roads.py` backfilled all 62 (~62 credits, news and ACLED
+untouched), 0 failures. The layer now reports **104 searched, 0 never
+searched**, so an unpinned crisis finally means only one thing.
 
-### 8. 20 crises should be re-fetched after the gate changes
+Five of the 62 carry reports, taking the map from 4 pins to 9: Ukraine (5
+items, signal 0.96 — now the highest on the map), Thailand (0.32), Venezuela→
+Chile and Displacement to Italy (0.2 each), and Iraq (a reopening item, 0.0).
+All 9 had curated locations already, so `unlocated` stays 0.
+
+The new items arrived through the item 1–4 gates, which dropped 38
+out-of-window and 55 inadmissible-source items that would otherwise have
+reached the map.
+
+### 8. 22 crises should be re-fetched after the gate changes
 
 `rescore_roads.py` can only ever *remove* items — anything the old gate rejected
 was never written to disk. Crises whose alias set has since expanded were
 searched under a stricter rule than the one now in force and may be
 under-counted. The script names them at the end of every run.
 
+As of 2026-07-28 (22, ~22 credits): Afghanistan, Burkina Faso, CAR, Cameroon,
+Chad, DRC, Ethiopia, Haiti, Lebanon, Mali, Mozambique, Myanmar, Niger, Nigeria,
+Palestine, Somalia, South Sudan, Sudan, Syria, Ukraine, Venezuela, Yemen.
+
+Two are worth doing first regardless of the alias question: **Syria**, whose
+re-fetch is what would let the item-3 dateline rule collapse the AP/Greenwich
+pair and bring the 0.76 down, and **Ukraine**, whose 0.96 is now the highest
+signal on the map on the strength of a single unreviewed fetch.
+
 ---
 
 ## Map
 
-### 9. Three of four road pins are country-level stand-ins
+### 9. Most of the nine road pins are country-level stand-ins
 
 The pin sits at the crisis, never at the blockage, because news prose carries no
 coordinates — that is inherent and the popup says so. But most crises are
