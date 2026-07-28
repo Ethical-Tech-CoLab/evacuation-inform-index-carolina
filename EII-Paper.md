@@ -23,6 +23,8 @@ This report explains what the tool is, what it measures, where its numbers come 
 
 1.2 The scores are not invented for the prototype. They are derived from the INFORM Severity Index, the monthly crisis severity model produced by ACAPS with the Joint Research Centre of the European Commission. The April 2026 release provides the live backbone, covering 104 crises.
 
+*A note on currency.* INFORM Severity is published monthly, and the crisis count changes with each release as crises are added, merged, or closed. Every figure in this report — the 104 crises, the driver counts in 4.0.2, the correlation and range statistics in 4.2a, and both worked examples in 4.2b — is computed from the **April 2026 release** and should be read as a snapshot of that release, not as a standing fact about the world. Later releases will move these numbers. The tool recomputes its own figures from whatever export is loaded, so the application does not go stale in the way this document does; where a reader finds the two disagreeing, the application is current and the report is dated.
+
 1.3 A second analytical layer, adapted from the Civilian Evacuation Risk Anticipation Index (CERAI), keeps two ideas deliberately apart: how dangerous a situation is, and how practical it is to move people out of it. Collapsing those into one number would let operational difficulty quietly cancel out legal obligation. The tool refuses that collapse.
 
 1.4 Live feeds supplement the monthly baseline. Conflict event data comes from ACLED, recent developments from news retrieval, and route weather from Open-Meteo. An optional satellite damage overlay can be connected if the user runs Microsoft HASTE themselves.
@@ -52,6 +54,25 @@ This report explains what the tool is, what it measures, where its numbers come 
 3.2 It is a research prototype. It is not deployed in any operational setting, has no institutional mandate, and produces no output that any organisation is obliged to act upon.
 
 3.3 The repository contains the full methodology, including the parts that are designed but not yet built. The distinction between what is implemented and what is planned is marked throughout the interface rather than left to the reader to infer.
+
+**3.4 What is built, and what is only designed.** The sections that follow describe the full design, including specific weights for components that do not yet exist. The specificity is a description of intent, not a report of a running system. This table is the boundary, and it should be consulted before any weight table in section 4 or 5 is read as operative.
+
+| Component | Section | Status |
+|---|---|---|
+| INFORM mapping: Conditions → Risk of Staying, Complexity → Risk of Evacuating | 4.2 | **Live** — computed for all 104 crises |
+| The EDI ratio, with denominator floor and mandatory two-component display | 4.1 | **Live** |
+| Low-information warning where both components are at or above 3.5 | 4.2b | **Live** — thresholds computed from the loaded dataset at run time |
+| Endangerment and Feasibility split, with protection-gap flag | 5.3 | **Live**, both derived from INFORM (a single input under two names) |
+| ACLED conflict events and the three-month fatality trajectory | 5.5 | **Live** |
+| News retrieval and route weather | 4.2, 5.3 | **Live** |
+| Road-access signal from news retrieval | 6 | **Live**, prototype quality — see the repository backlog |
+| Vulnerability profile: twelve factors, 0.06 step, 0.7–1.3 bound | 5.6 | **Live as an interactive display**; the factors, step size and bounds are researcher estimates, unvalidated, and the band saturates (9.12.2) |
+| Satellite damage overlay (Microsoft HASTE) | 7.7 | **Optional**, empty unless the user self-hosts a deployment |
+| Three-layer architecture with 50/35/15 weights and its sub-weights | 4.3 | **Designed only.** Layer one is approximated by the INFORM mapping above; layers two and three are not implemented as weighted components |
+| Seven-dimension decomposition, corridor and checkpoint dynamics, destination-readiness gatekeepers | 8.3 | **Designed only** |
+| Expert elicitation, fuzzy AHP weight validation, historical calibration | 11.2–11.4 | **Not started.** Every weight in this report is a single researcher's estimate |
+
+The short version: the live instrument is the INFORM mapping, the ratio, the CERAI-style split, and the live feeds around them. The weight tables in 4.3 and the twelve-factor apparatus in 5.6 describe where the work is going, and only 5.6 has a working interface. No weight in this report has been validated by anyone.
 
 ---
 
@@ -106,7 +127,15 @@ The index expresses its result as a ratio: the Risk Score for Evacuating divided
 
 A value above 1.0 indicates that evacuation carries more risk than remaining. A value below 1.0 indicates the reverse. A value near 1.0 indicates that the two courses of action carry comparable risk, which is itself a meaningful finding rather than an absence of one.
 
-Two safeguards apply. Ratios become unstable as the denominator approaches zero, so a floor of 0.5 on a five point scale is applied to the staying score. And the ratio is never shown alone: both component scores accompany it wherever it appears.
+Two safeguards apply. Ratios become unstable as the denominator approaches zero, so a floor of 0.5 on a five point scale is applied to the staying score. And the ratio is never shown alone: both component scores accompany it wherever it appears. On the current dataset the floor never engages — the lowest observed staying score is 1.36 — so no published figure depends on it; 4.2a gives the check.
+
+**4.1.1 What kind of quantity this is, and what division assumes.** Dividing one score by another treats both as ratio-scale quantities: numbers with a true zero, where "twice as much" is meaningful. INFORM's underlying severity bands do not clearly meet that standard. They are constructed from indicators aggregated into a ten-point scale that behaves as an ordinal ranking with interval-like spacing, and the EII then rescales to five points. There is no defensible sense in which a Conditions score of 4 represents exactly twice the severity of a 2, and therefore no fully defensible sense in which the EDI's "2.60" means evacuation is 2.6 times riskier than staying.
+
+The honest position is that the division is a *comparison device*, not a measurement. What the EDI supports is ordering and sign — whether evacuation scores worse than staying, and roughly how far apart they sit — not arithmetic on the result. Two consequences follow, and the prototype accepts both. Differences of a few hundredths between crises carry no meaning and should not be ranked against each other. And the EDI must never be averaged, summed across crises, or fed into a further calculation, because those operations require exactly the ratio-scale property the inputs lack.
+
+This is a real limitation rather than a resolved one. The alternative that would remove it — reporting the two components as a labelled pair and abandoning the quotient — is genuinely worth considering, and 4.2a's finding that the ratio compresses toward 1.0 precisely in the most severe crises strengthens the case for it. The quotient is retained because a single ordered number is what makes 104 crises comparable at a glance, which is the tool's purpose; but it is retained on the understanding that it is a pointer, not a measurement.
+
+**4.1.2 The ratio and the refusal to collapse.** Section 5 argues that danger and feasibility must never be collapsed into one score, while this section foregrounds a single ratio. The tension is worth stating directly rather than leaving to the reader. The EDI is a pointer that directs attention to crises where the staying/leaving comparison is unusual; it is not a verdict about either dimension, and it is not the object of section 5's critique, because both components remain visible wherever it is shown and neither is ever absorbed into it. The collapse section 5 forbids is the one that would let low feasibility quietly reduce apparent danger, extinguishing an obligation. A ratio that always carries its own numerator and denominator on its face cannot do that. Where the ratio does mislead, it is for the reasons in 4.2a — the proxy beneath it — not because it is a single number.
 
 ### 4.2 The live data backbone
 
@@ -211,9 +240,9 @@ This is the same non compensatory logic used by the Human Development Index and 
 |---|---|---|
 | Endangerment | How dangerous is it to stay? | INFORM Conditions expressed as a percentage, with a 75 per cent obligation threshold marked, and a trajectory drawn from recent ACLED fatality trends |
 | Feasibility | Can civilians realistically move? | INFORM Complexity inverted and expressed as a percentage, reduced by live route weather from Open-Meteo |
-
-Note that Feasibility and the Risk Score for Evacuating are **the same quantity under two names**, pointing in opposite directions: 4.2 maps Complexity onto RSE so that higher Complexity means higher evacuation risk, while this table inverts Complexity so that higher Complexity means lower feasibility. Both are internally consistent and they do not contradict each other arithmetically -- high evacuation risk and low feasibility are the same claim -- but presenting them as two separate concepts implies the tool has two independent readings of movement when it has one. They share a single input, INFORM Complexity, and therefore share every limitation set out in 4.2a. A future version should either derive Feasibility from an independent source or collapse the two into one reported quantity.
 | Protection gap flag | Where is escalation needed? | Raised when endangerment is at or above 75 per cent while feasibility is at or below 40 per cent |
+
+Note that Feasibility and the Risk Score for Evacuating are **the same quantity under two names**, pointing in opposite directions: 4.2 maps Complexity onto RSE so that higher Complexity means higher evacuation risk, while this table inverts Complexity so that higher Complexity means lower feasibility. Stated as an identity: evacuation risk ≈ (1 − feasibility). Both are internally consistent and they do not contradict each other arithmetically — high evacuation risk and low feasibility are the same claim — but presenting them as two separate concepts implies the tool has two independent readings of movement when it has one. They share a single input, INFORM Complexity, and therefore share every limitation set out in 4.2a. A future version should either derive Feasibility from an independent source or collapse the two into one reported quantity.
 
 5.4 Endangerment is banded for readability: manageable, elevated, severe, extreme, and critical, with critical reserved for scores at or above 90 per cent.
 
@@ -257,7 +286,7 @@ The distinction matters. A demographic list alone would treat vulnerability as a
 
 7.1 The laboratory hosting this work has a lineage in supply chain traceability and forced labour mitigation, and several practices carry over from that domain into how this index treats evidence.
 
-7.2 A two witness standard, adapted from the FLARE model developed by the Global Fund to End Modern Slavery, separates a fact corroborated by two or more independent reports from a single unverified claim. This sharpens source credibility into a graded ladder rather than a binary.
+7.2 A two witness standard separates a fact corroborated by two or more independent reports from a single unverified claim, sharpening source credibility into a graded ladder rather than a binary. Earlier drafts attributed this standard to the FLARE model developed by the Global Fund to End Modern Slavery. That attribution was wrong and has been withdrawn: FLARE is a machine learning classifier that predicts company level forced labour risk, not a corroboration protocol, and no published GFEMS methodology describes a formally named two witness standard. The convention is this project's own, in the spirit of the corroboration practices common to the supply chain traceability work described in 7.1, and it is claimed as nothing more than that. CERAI and FLARE are named throughout this report as sibling and internal projects supplying design lineage, not as external authorities a reader can consult.
 
 7.3 The score is deterministic rather than generated. Every number the tool produces comes from a fixed, auditable formula. Where a language model is involved, it supplies source grounded facts and never overrides the arithmetic. A reader can reconstruct any score by hand.
 
@@ -403,20 +432,34 @@ The live application is available at https://ethical-tech-colab.github.io/evacua
 
 ## Sources
 
-Primary data and frameworks referenced in this report:
+Entries are grouped by kind and given in a single style: author or publisher, title, date where one is published, and a locator. Data sources are live services and are cited by publisher and access route rather than by publication date.
+
+**Internal and sibling projects.** CERAI (Civilian Evacuation Risk Anticipation Index) and FLARE are referred to throughout this report as design lineage. CERAI is an internal Ethical Tech CoLab project with no public release, and the EII implements an adaptation of its danger/feasibility structure rather than its engine. FLARE is a machine learning forced labour risk model developed by the Global Fund to End Modern Slavery; it is named here only as background to the evidence practices in section 7, and no methodological claim in this report rests on it — see 7.2 for a correction to an earlier draft that did. Neither is a citable external authority, and readers should treat references to them accordingly.
+
+**Data sources**
 
 - [INFORM Severity Index](https://www.acaps.org/en/thematics/all-topics/inform-severity-index), ACAPS with the Joint Research Centre of the European Commission, April 2026 release, 104 crises
-- [Article 49, Geneva Convention (IV) on Civilians, 1949](https://ihl-databases.icrc.org/en/ihl-treaties/gciv-1949/article-49), International Committee of the Red Cross
-- [ACLED](https://acleddata.com), conflict event and fatality data
+- [ACLED](https://acleddata.com), Armed Conflict Location and Event Data Project, conflict event and fatality data
 - [Open-Meteo](https://open-meteo.com), route weather and daylight
-- [Microsoft HASTE](https://aka.ms/HASTE), satellite damage assessment, self hosted
-- [IOM Risk Index for Climate Displacement](https://environmentalmigration.iom.int/CMIL-AP/RICD), two tier macro and micro precedent
-- [CDC Social Vulnerability Index](https://www.atsdr.cdc.gov/placeandhealth/svi/index.html), personal vulnerability layer
-- [Fragile States Index](https://fragilestatesindex.org), Fund for Peace
-- [Handbook on Constructing Composite Indicators](https://publications.jrc.ec.europa.eu/repository/handle/JRC31473), OECD and JRC, 2008
-- Saaty, T.L. (1990). How to Make a Decision: The Analytic Hierarchy Process. European Journal of Operational Research, volume 48, issue 1, pages 9 to 26
-- Beccari, B. (2016). A Comparative Analysis of Disaster Risk, Vulnerability and Resilience Composite Indicators. PLoS Currents Disasters
-- Al Fozaie (2022). A Guide to Integrating Expert Opinion and Fuzzy AHP When Generating Weights for Composite Indices. Advances in Fuzzy Systems
+- [Microsoft HASTE](https://aka.ms/HASTE), Microsoft with Planet, satellite damage assessment, self hosted
+
+**Legal instruments**
+
+- International Committee of the Red Cross. [Article 49, Geneva Convention (IV) relative to the Protection of Civilian Persons in Time of War](https://ihl-databases.icrc.org/en/ihl-treaties/gciv-1949/article-49), 1949
+- International Committee of the Red Cross. [Article 17, Protocol Additional (II) to the Geneva Conventions](https://ihl-databases.icrc.org/en/ihl-treaties/apii-1977/article-17), 1977
+- United Nations General Assembly. *Universal Declaration of Human Rights*, Article 13, 1948
+- United Nations General Assembly. *International Covenant on Civil and Political Rights*, Article 12, 1966
+- International Criminal Tribunal for the former Yugoslavia. *Prosecutor v. Tadić*, Decision on the Defence Motion for Interlocutory Appeal on Jurisdiction, 1995, paragraph 70
+
+**Composite-index precedent and method**
+
+- OECD and Joint Research Centre. [*Handbook on Constructing Composite Indicators: Methodology and User Guide*](https://publications.jrc.ec.europa.eu/repository/handle/JRC31473), 2008
+- Saaty, Thomas L. "How to Make a Decision: The Analytic Hierarchy Process." *European Journal of Operational Research*, volume 48, issue 1, 1990, pages 9–26
+- Beccari, Benjamin. "A Comparative Analysis of Disaster Risk, Vulnerability and Resilience Composite Indicators." *PLoS Currents Disasters*, 2016
+- Al Fozaie, Muhammad. "A Guide to Integrating Expert Opinion and Fuzzy AHP When Generating Weights for Composite Indices." *Advances in Fuzzy Systems*, 2022
+- International Organization for Migration. [Risk Index for Climate Displacement](https://environmentalmigration.iom.int/CMIL-AP/RICD), two tier macro and micro precedent
+- Centers for Disease Control and Prevention. [Social Vulnerability Index](https://www.atsdr.cdc.gov/placeandhealth/svi/index.html), personal vulnerability layer
+- Fund for Peace. [Fragile States Index](https://fragilestatesindex.org)
 
 ---
 

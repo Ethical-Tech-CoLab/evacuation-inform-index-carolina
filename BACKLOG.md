@@ -223,38 +223,67 @@ against the current ACAPS/JRC methodology and correct if they differ.
 
 ## Peer-review findings (from PEER-REVIEW.md — "major revisions")
 
-Full referee report in [PEER-REVIEW.md](PEER-REVIEW.md). Verify each against the
-current report copy and check off any already fixed.
+Full referee report in [PEER-REVIEW.md](PEER-REVIEW.md). All four majors, all
+three minors, the three internal inconsistencies and the verification request
+are now answered in [EII-Paper.md](EII-Paper.md). What follows records where,
+and what was *not* resolved.
 
 Major:
-- [ ] **The central proxy is asserted, not validated (§4.2).** INFORM
-      "Complexity" measures humanitarian *access for responders*, not the
-      danger civilians face self-evacuating a corridor. Add a subsection naming
-      1–2 crises where the two pull apart, the expected bias direction, and why
-      the mapping is still defensible.
-- [ ] **The headline ratio is arithmetically fragile (§4.1).** Dividing two
-      rescaled ordinal 5-point scores treats them as ratio-scale; the 0.5
-      denominator floor is arbitrary and can swing the ratio 2.5×; equal ratios
-      hide different absolute stakes. Justify or drop the ratio-scale treatment,
-      report a floor-sensitivity check, and consider demoting the ratio beneath
-      the two-component display.
-- [ ] **Designed vs built is interleaved (§4.3, §5.6 vs §8.3, §11.5).** Specific
-      weight tables (50/35/15, etc.) and a twelve-factor profile are mostly
-      "designed but not yet built" (only layer one is live). Add an
-      implemented-vs-planned table near the top so the plan isn't read as operative.
-- [ ] **No demonstration.** No named crisis is carried end-to-end. Add one
-      worked example with real numbers (staying, evacuating, ratio, endangerment/
-      feasibility, one vulnerability profile).
+- [x] **The central proxy is asserted, not validated (§4.2).** Answered in
+      **§4.2a**, against the live 104-crisis dataset: r = 0.62 between the two
+      dimensions, Yemen carried as the divergence case (the floods entry earns
+      the index's highest EDI of 2.60 from a Complexity score that reflects the
+      war, not the flood), Bangladesh as the favourable case, and the bias
+      direction stated in both directions.
+- [x] **The headline ratio is arithmetically fragile (§4.1).** Floor sensitivity
+      answered in §4.2a (inert — no crisis falls below 0.5; observed minimum
+      1.36). The ratio-scale objection, which nothing in the paper had
+      addressed, is answered in the new **§4.1.1**: the division is conceded as
+      a comparison device rather than a measurement, with two consequences
+      accepted — no ranking on hundredths, and the EDI must never be averaged
+      or fed into further arithmetic.
+- [x] **Designed vs built is interleaved (§4.3, §5.6).** New **§3.4** carries a
+      twelve-row implemented-vs-planned table before any weight table is read,
+      ending "no weight in this report has been validated by anyone."
+- [x] **No demonstration.** Answered in **§4.2b** — Sudan and the Yemen floods
+      carried end to end with real numbers.
 
-Internal inconsistencies to reconcile: "we resist a single number" vs "a single
-ratio" (state the ratio is a pointer, not a verdict); multiplier saturation —
-ten of twelve factors raise risk but the ±0.30 bound saturates after five 0.06
-steps, contradicting the "cumulative" premise; "Risk of Evacuating" (§4.2) and
-"Feasibility" (§5.3) are inverses of the same input but never reconciled — state
-evac-risk ≈ (1 − feasibility).
+Minor:
+- [x] Data currency — **§1.2** now states the monthly cadence, fixes every
+      figure to the April 2026 release, and tells a reader that where report and
+      application disagree, the application is current.
+- [x] Citation styles normalised and grouped (data / legal / method), with
+      CERAI and FLARE labelled internal and explicitly not citable authorities.
+- [x] Prose weight passages — superseded by the §3.4 table.
 
-Minor: data currency — state the 104-crises snapshot date and cadence (m1);
-normalize the mixed citation styles and label CERAI/FLARE as internal projects
-(m2); convert prose weight passages to the implemented-vs-planned table (m3).
-**[Verify]** the "two-witness standard" attributed to GFEMS's FLARE (§7.2) —
-supply a followable citation or mark FLARE/CERAI as internal sibling projects.
+Internal inconsistencies:
+- [x] "Single number" vs "single ratio" — reconciled in new **§4.1.2**: the
+      ratio is a pointer, not a verdict, and cannot perform the collapse §5
+      forbids because both components stay on its face.
+- [x] Multiplier saturation — disclosed at **§9.12.2**.
+- [x] Evac-risk vs feasibility — **§5.3** states the identity
+      evac risk ≈ (1 − feasibility). *(This note was also silently breaking the
+      §5.3 table in every markdown renderer, orphaning the protection-gap row;
+      fixed.)*
+
+**[Verify] resolved, and not in the paper's favour.** §7.2 attributed the
+two-witness standard to GFEMS's FLARE. FLARE is a machine-learning classifier
+predicting company-level forced-labour risk — not a corroboration protocol — and
+no published GFEMS methodology describes a named two-witness standard. The
+attribution is withdrawn in §7.2 rather than re-cited; the convention is now
+claimed as the project's own.
+
+### Still open from the review
+
+These were raised in *What's missing* and are not closed by the current pass:
+
+- **Sensitivity analysis beyond the floor.** The 10-to-5-point rescaling and the
+  0.06 multiplier step are still uncharacterised. A reader cannot tell whether
+  the rankings are robust or knife-edge.
+- **Comparison against fuller CERAI outputs.** The most natural available
+  validation, and it needs CERAI itself.
+- **§4.2a's own finding, unaddressed structurally.** The ratio compresses toward
+  1.0 exactly in the severity-5 crises — most confident where least meaningful.
+  The paper now says so and warns at the point of reading, but the headline
+  metric is still a ratio. Demoting it beneath the two-component display, as the
+  reviewer suggested, remains a live design question rather than a settled one.
