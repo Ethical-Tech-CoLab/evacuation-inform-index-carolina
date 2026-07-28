@@ -46,7 +46,7 @@ ORDER = ["blocked", "damaged", "checkpoint", "reopened"]
 
 # The map popup shows the same fields the drawer does; anything else in an item
 # is search-engine bookkeeping the reader has no use for.
-ITEM_FIELDS = ("title", "url", "date", "source", "status", "tags")
+ITEM_FIELDS = ("title", "url", "date", "source", "status", "tags", "undated")
 
 
 def load_geo():
@@ -126,8 +126,30 @@ def main():
             ],
         })
 
+    # Cross-crisis duplicates. One URL can be counted under two neighbouring
+    # crises. That is sometimes legitimate — a single dispatch really can bear on
+    # both — so this surfaces it rather than suppressing it: each shared item is
+    # told which *other* crises carry it, and the popup marks it so a reader knows
+    # the same report is being counted more than once.
+    by_url = {}
+    for c in out:
+        for it in c["items"]:
+            u = it.get("url")
+            if u:
+                by_url.setdefault(u, []).append(c)
+    shared = {u: cs for u, cs in by_url.items() if len(cs) > 1}
+    for u, crises_sharing in shared.items():
+        labels = [c.get("crisis") or c.get("country") or c["slug"]
+                  for c in crises_sharing]
+        for c in crises_sharing:
+            here = c.get("crisis") or c.get("country") or c["slug"]
+            for it in c["items"]:
+                if it.get("url") == u:
+                    it["also_in"] = [n for n in labels if n != here]
+
     payload = {
         "total": len(items),
+        "cross_crisis": len(shared),
         "searched": searched,
         "unsearched": unsearched,
         "with_reports": with_reports,
@@ -145,6 +167,13 @@ def main():
         print(f"  {len(unlocated)} have reports but no curated location "
               f"and are NOT pinned: {', '.join(unlocated)}")
     print(f"  {sum(len(c['items']) for c in out)} reports total")
+    if shared:
+        print(f"  {len(shared)} URL(s) counted under more than one crisis "
+              f"(marked in the popup):")
+        for u, crises_sharing in shared.items():
+            labels = [c.get("crisis") or c.get("country") or c["slug"]
+                      for c in crises_sharing]
+            print(f"    {' + '.join(labels)}: {u}")
 
 
 if __name__ == "__main__":

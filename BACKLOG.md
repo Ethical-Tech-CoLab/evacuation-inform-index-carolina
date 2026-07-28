@@ -15,62 +15,80 @@ roughly two thirds of them, and these are what survived.
 
 ## Road access — data quality
 
-### 1. The 60-day window is not enforced
+### 1. The 60-day window is not enforced — **CLOSED 2026-07-28**
 
-The popup says reports are "over the last 60 days". Three stored items are
-older: an IOM planning document at 226 days, a SCIAF Malawi item at 156, and an
-FPRI analysis at 90 whose subject is a border closure from **2023**. Tavily's
-`days` parameter is passed but evidently not honoured for every result, and
-nothing downstream checks.
+The popup said reports were "over the last 60 days" but nothing enforced it.
 
-Two items also carry no `published_date` at all, so they cannot be placed in or
-out of any window.
+**Fixed.** `road_date_window` in [server.py](server.py) now classifies each item
+as in-window / out / undated against `query_days`; `tavily_roads` drops the
+out-of-window ones (counting them as `stale`) and flags undated ones with an
+`undated` field, which the popup renders as "· undated". `rescore_roads.py`
+applies the same gate to the stored snapshots, and re-running it removed the
+stale items: Niger's 2023 border closure (signal 0.2 → 0.0, so its pin is gone),
+Malawi's Feb SCIAF item (0.32 → 0.16). The map now carries 7 road pins, not 8.
+Two undated items (Malawi, Eritrea) are kept and labelled rather than dropped.
 
-**Why it matters.** A three-year-old commodity-export border closure is
-currently one of Niger's road-access reports. On a map read for whether people
-can leave *today*, a stale item is worse than a missing one.
+### 2. Source quality is unchecked — **CLOSED 2026-07-28**
 
-**To close.** Drop items whose `published_date` falls outside `query_days` in
-`tavily_roads`, label undated ones as undated rather than silently keeping them,
-and re-run `rescore_roads.py`. Cheap and offline.
+DRC's only pin — and its entire −2-point feasibility penalty — was a
+`wikitravel.org` "Travel news" index page; two other items were `facebook.com`
+posts. The relevance gates judged the *text*; nothing judged the publisher.
 
-### 2. Source quality is unchecked
+**Fixed.** [`source_is_admissible`](server.py) applies a `SOURCE_DENYLIST` of
+social / user-generated and open-wiki / travel-aggregator domains (matched on
+the registrable domain, so subdomains like `m.facebook.com` are caught) *before*
+the relevance gate, in both `tavily_roads` and `rescore_roads.py`; dropped items
+are counted as `low_source`. The line is drawn as a **deny** list on purpose —
+an allow list would silently exclude reliefweb, OCHA/IOM, and local-language
+outlets, the worse error — so it names only sources that are categorically not
+newsrooms.
 
-DRC's only pin — and therefore its entire −2-point feasibility penalty — is a
-`wikitravel.org` "Travel news" index page, a link dump that happens to mention
-Congo and floods. Two other items are `facebook.com` posts. The relevance gates
-judge the *text*; nothing judges the publisher.
+Re-running dropped three pins: DRC (wikitravel), Eritrea and Malawi (both
+Facebook posts — the Eritrea one was also the item-6 Tigray-attribution case).
+The map now carries **4 road pins, all wire/newsroom-sourced** (Sudan, Syria,
+Lebanon, Philippines). One judgment call left in: `yahoo.com` is kept, since
+Yahoo News rehosts AP/Reuters wire copy rather than user posts.
 
-**To close.** An allow/deny list of domains, or a minimum standard (wire
-services, major outlets, UN/OCHA/IOM/NGO reporting), applied before
-classification. Needs a judgment call on where the line sits — reliefweb and
-local-language outlets must not be excluded along with the aggregators.
+### 3. De-duplication misses re-headlined wire copy — **PARTIALLY CLOSED 2026-07-28**
 
-### 3. De-duplication misses re-headlined wire copy
+`_is_duplicate` caught identical URLs and near-identical headlines at 0.75 token
+overlap. The AP and Greenwich Time versions of the same Abdin dispatch share
+only ~45% of their headline words and were both counted, which is most of why
+Syria carries the highest signal on the map (0.76, −9 points).
 
-`_is_duplicate` catches identical URLs and near-identical headlines at 0.75
-token overlap. The AP and Greenwich Time versions of the same Abdin dispatch
-share only ~45% of their headline words and are both counted, which is most of
-why Syria now carries the highest signal on the map (0.76, −9 points).
+**Implemented.** [`_wire_dateline`](server.py) extracts a normalised
+`city|agency` key from a wire dateline in the snippet ("ABDIN, Syria (AP) —"),
+and `_is_duplicate` now treats two items that share one as the same story,
+between the URL check and the headline check. It fires only when *both* items
+carry a dateline, so it cannot merge two distinct blockages — the error this
+tool must not make. Verified on synthetic pairs (same dateline merges; same
+agency but different city does not).
 
-The threshold is deliberately high: merging two genuinely distinct blockages
-would *understate* obstruction, the one error this tool must not make. So this
-is a known, chosen under-reach, not an oversight.
+**Still open — the stored Syria pair is not merged.** Only one item in the whole
+snapshot carries an extractable dateline: the Greenwich rerun. The AP *original*
+that seeded it has a snippet made of page navigation ("Test Your News I.Q. …
+Elections …"), not the article body, so no dateline can be read from it and the
+two do not share a key. This is a Tavily content-extraction artifact, not a flaw
+in the rule. Re-fetching Syria (already on the item-8 re-fetch list) with cleaner
+snippets is what would let the dateline rule collapse the pair and bring the
+0.76 signal down. The rule will catch clean syndication as soon as it appears.
 
-**To close.** Match on the wire dateline in the snippet ("ABDIN, Syria (AP) —")
-rather than the headline, which survives re-titling. Falls back to the current
-rule where no dateline is present.
+### 4. Cross-crisis duplicates are invisible — **CLOSED 2026-07-28**
 
-### 4. Cross-crisis duplicates are invisible
+A single URL can be counted under two neighbouring crises. The general case is
+legitimate — one story really can bear on two crises — so it is *surfaced*, not
+suppressed.
 
-A single URL can be counted under two neighbouring crises. The el-Obeid case
-that prompted this was a place-gate bug and is fixed, but the general case is
-legitimate — one story really can bear on two crises — so it should be
-*surfaced*, not suppressed.
+**Fixed.** [build_roads_layer.py](build_roads_layer.py) now indexes every item
+URL across all crises, tags each shared item with an `also_in` list naming the
+*other* crises that carry it, prints a `cross_crisis` count and the offending
+URLs, and records the count in `roads.json`. The map popup marks a shared item
+with an "also counted under …" badge. No URLs are shared in the current snapshot
+(the el-Obeid place-gate bug that first prompted this was already fixed), but the
+machinery is in place and verified against a synthetic set for when one recurs.
 
-**To close.** Have `build_roads_layer.py` report URLs appearing under more than
-one crisis, and mark them in the popup so a reader knows the same report is
-being counted twice.
+While here, `undated` was added to the layer's `ITEM_FIELDS` so the flag from
+item 1 reaches the map-layer popup, not just the drawer.
 
 ### 5. Some items are not about roads at all
 
@@ -92,6 +110,10 @@ described is in a different country from the pin.
 
 **To close.** No clean rule. Worth flagging in the popup when the only match is
 the country name and the item names another country's sub-national area.
+
+*Note (2026-07-28): the specific Eritrea item above was a Facebook post and has
+since been removed by the item-2 source gate, so there is no live instance right
+now — but the attribution problem itself is unchanged and will recur.*
 
 ---
 
@@ -117,7 +139,7 @@ under-counted. The script names them at the end of every run.
 
 ## Map
 
-### 9. Seven of eight road pins are country-level stand-ins
+### 9. Three of four road pins are country-level stand-ins
 
 The pin sits at the crisis, never at the blockage, because news prose carries no
 coordinates — that is inherent and the popup says so. But most crises are

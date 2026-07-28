@@ -1627,7 +1627,7 @@ function roadsHTML(r){
     const amb=(it.tags||[]).length>1 ? `<span class="ramb" title="Matched both obstruction and reopening language">mixed signals</span>` : '';
     h+=`<div class="news road"><span class="rpill ${st.cls}">${st.icon} ${st.label}</span>${amb}
       <a href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener noreferrer">${esc(it.title)}</a>
-      <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):''}</div>
+      <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):(it.undated?' · undated':'')}</div>
       ${it.snippet?`<p>${esc(it.snippet)}…</p>`:''}</div>`;
   });
   return h;
@@ -1694,9 +1694,10 @@ function roadPinPopup(c){
   (c.items||[]).forEach(it=>{
     const s=ROAD_STATUS[it.status]||{label:it.status,cls:'',icon:'•'};
     const amb=(it.tags||[]).length>1?`<span class="ramb" title="Matched both obstruction and reopening language">mixed signals</span>`:'';
-    h+=`<div class="news road"><span class="rpill ${s.cls}">${s.icon} ${s.label}</span>${amb}
+    const dup=(it.also_in||[]).length?`<span class="ramb" title="The same report is also counted under: ${esc(it.also_in.join(', '))}">also counted under ${esc(it.also_in.join(', '))}</span>`:'';
+    h+=`<div class="news road"><span class="rpill ${s.cls}">${s.icon} ${s.label}</span>${amb}${dup}
       <a href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener noreferrer">${esc(it.title)}</a>
-      <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):''}</div></div>`;
+      <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):(it.undated?' · undated':'')}</div></div>`;
   });
   return h+'</div></div>';
 }
@@ -2058,7 +2059,7 @@ function buildDetailHTML(d,nasaHtml){
     if(t.answer) h+=`<div class="ans">${esc(t.answer)}</div>`;
     (t.items||[]).forEach(it=>{
       h+=`<div class="news"><a href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener noreferrer">${esc(it.title)}</a>
-        <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):''}</div>
+        <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):(it.undated?' · undated':'')}</div>
         ${it.snippet?`<p>${esc(it.snippet)}…</p>`:''}</div>`;
     });
     if(!(t.items||[]).length) h+='<p style="font-size:12.5px;color:#5b6b7a">No recent items returned.</p>';

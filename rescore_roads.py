@@ -58,12 +58,24 @@ def main():
         country, crisis = d.get("country"), d.get("crisis")
         place = places.get(os.path.basename(path)[:-5])
 
+        window_days = roads.get("query_days", 60)
         kept, counts = [], {"blocked": 0, "damaged": 0, "checkpoint": 0, "reopened": 0}
-        dupes = 0
+        dupes = expired = lowsrc = 0
         for it in roads.get("items") or []:
             blob = f"{it.get('title','')} {it.get('snippet','')}"
+            # Publisher gate: drop social posts and travel-wiki link dumps.
+            if not server.source_is_admissible(it.get("source") or it.get("url")):
+                lowsrc += 1
+                continue
             if not server.road_item_is_relevant(blob, country, place):
                 continue
+            # Recency: drop items published outside the stored window, flag undated.
+            w = server.road_date_window(it, window_days)
+            if w == "out":
+                expired += 1
+                continue
+            if w == "undated":
+                it = dict(it, undated=True)
             # Re-classify too: the status patterns were corrected alongside the
             # gate ("shuts" did not match \bshut\b, so closures read as reopenings).
             status, tags = server.classify_road(blob)
@@ -90,6 +102,10 @@ def main():
                 roads["rescored"] = True
                 if dupes:
                     roads["duplicates"] = roads.get("duplicates", 0) + dupes
+                if expired:
+                    roads["stale"] = roads.get("stale", 0) + expired
+                if lowsrc:
+                    roads["low_source"] = roads.get("low_source", 0) + lowsrc
                 json.dump(d, open(path, "w", encoding="utf-8"), ensure_ascii=False)
 
         # Crises whose alias list grew were searched under a stricter gate than

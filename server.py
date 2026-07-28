@@ -7,7 +7,7 @@ Serves the static site AND a /api/detail endpoint that pulls, server-side:
 Keys are read from a gitignored .env file (or the environment).
 Stdlib only — no pip install needed.  Run:  python3 server.py
 """
-import json, os, re, time, hashlib, hmac, threading, urllib.request, urllib.parse, http.server
+import json, os, re, time, hashlib, hmac, threading, urllib.request, urllib.parse, http.server, email.utils
 from datetime import datetime, timedelta
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -395,6 +395,42 @@ def _place_only_tokens(country, place=None):
         a.lower() for a in PLACE_ALIASES.get(country, ())}
     return {t for t in toks if t not in country_words}
 
+# Domains that carry user-generated posts, open-wiki travel copy, or link-dump
+# indexes rather than reported journalism. The relevance gates judge the text; a
+# post can pass them and still be nobody's reporting — DRC's only pin, and its
+# whole −2-point feasibility penalty, was a wikitravel "Travel news" index page
+# that merely mentioned Congo and floods, and two other items were Facebook
+# posts. This is a *deny* list, deliberately not an allow list: an allow list
+# would silently drop reliefweb, OCHA/IOM, and the local-language outlets that
+# carry the earliest road news, which is the worse error on a map about whether
+# people can leave. It names only sources that are categorically not newsrooms.
+SOURCE_DENYLIST = {
+    # social / user-generated
+    "facebook.com", "twitter.com", "x.com", "instagram.com", "tiktok.com",
+    "youtube.com", "reddit.com", "t.me", "telegram.me", "linkedin.com",
+    "pinterest.com", "threads.net", "vk.com", "medium.com", "quora.com",
+    # open wikis and travel link-dumps
+    "wikitravel.org", "wikivoyage.org", "wikipedia.org", "tripadvisor.com",
+    "lonelyplanet.com",
+}
+
+
+def source_is_admissible(source):
+    """False for social, open-wiki, and travel-aggregator domains.
+
+    `source` is the stored netloc (www-stripped) or a full URL. Matches the
+    registrable domain and its subdomains, so m.facebook.com and
+    en.wikitravel.org are caught too.
+    """
+    host = source or ""
+    if "//" in host:
+        host = urllib.parse.urlparse(host).netloc
+    host = host.lower().split("@")[-1].split(":")[0]
+    if host.startswith("www."):
+        host = host[4:]
+    return not any(host == d or host.endswith("." + d) for d in SOURCE_DENYLIST)
+
+
 def road_item_is_relevant(text, country, place=None):
     """True if this item is plausibly about land access *in this crisis's area*.
 
@@ -510,17 +546,50 @@ def _headline_key(title):
     return set(words)
 
 
+# News-agency tags that appear in a wire dateline. A syndicated dispatch keeps
+# its origin dateline ("ABDIN, Syria (AP) — …") on every outlet that reruns it,
+# even when the outlet rewrites the headline, so the dateline is a surer identity
+# for a wire story than the headline the current rule matches on.
+_WIRE_AGENCIES = (r"AP|Reuters|AFP|Bloomberg|dpa|EFE|Xinhua|Kyodo|Anadolu|TASS|"
+                  r"AAP|Associated Press|Agence France-Presse")
+_DATELINE_RE = re.compile(
+    r"\b([A-Z][A-Z.'\-]{1,}(?:\s+[A-Z][A-Z.'\-]+)*"     # ALL-CAPS origin city
+    r"(?:,\s*[A-Z][A-Za-z.'\- ]+?)?)"                    # optional ", Region"
+    r"\s*\(\s*(" + _WIRE_AGENCIES + r")\s*\)\s*[—–\-]")  # (AGENCY) —
+
+
+def _wire_dateline(snippet):
+    """Normalised 'city|agency' from a wire dateline, or None if there is none.
+
+    Returns just the origin city (first token) and the agency, both lowercased,
+    so two rehostings of one dispatch share a key even when everything after the
+    dateline — headline included — has been rewritten.
+    """
+    m = _DATELINE_RE.search(snippet or "")
+    if not m:
+        return None
+    city = re.split(r"[,\s]", m.group(1).strip())[0].lower()
+    return f"{city}|{m.group(2).lower()}"
+
+
 def _is_duplicate(item, kept):
     """True if `item` reports the same story as something already kept.
 
-    Exact URL first, then headline overlap. The threshold is deliberately high:
-    merging two genuinely distinct blockages would understate obstruction, which
-    is the error this tool must not make.
+    Exact URL first, then a shared wire dateline, then headline overlap. The
+    dateline check catches re-headlined wire copy that the headline rule misses
+    (the AP and Greenwich reruns of one Abdin dispatch share only ~45% of their
+    headline words). The headline threshold stays deliberately high: merging two
+    genuinely distinct blockages would understate obstruction, the error this
+    tool must not make, so dateline matching only fires when both items actually
+    carry one.
     """
     url = (item.get("url") or "").split("?")[0].rstrip("/")
     key = _headline_key(item.get("title"))
+    dateline = _wire_dateline(item.get("snippet"))
     for k in kept:
         if url and url == (k.get("url") or "").split("?")[0].rstrip("/"):
+            return True
+        if dateline and dateline == _wire_dateline(k.get("snippet")):
             return True
         other = _headline_key(k.get("title"))
         if not key or not other:
@@ -531,19 +600,55 @@ def _is_duplicate(item, kept):
     return False
 
 
+def road_date_window(item, days):
+    """Where an item's published_date falls relative to a `days`-day window.
+
+    Returns 'in', 'out', or 'undated'. Tavily's `days` parameter is not honoured
+    for every result, so this is the backstop that keeps a three-year-old border
+    closure off a map read for whether people can leave today. Undated items are
+    surfaced as such rather than silently kept — an unplaceable date is a fact
+    the reader should see, not one the tool should paper over.
+    """
+    raw = item.get("date")
+    if not raw:
+        return "undated"
+    try:
+        dt = email.utils.parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
+        return "undated"
+    if dt is None:
+        return "undated"
+    if dt.tzinfo is not None:                 # normalise to naive UTC to compare
+        dt = (dt - dt.utcoffset()).replace(tzinfo=None)
+    return "in" if (datetime.utcnow() - dt) <= timedelta(days=days) else "out"
+
+
 def tavily_roads(key, country, crisis, days=60, max_results=10, place=None):
     """Road-access items for one crisis, classified and scored."""
     news = tavily_news(key, f"{crisis_query(country, crisis, place)} {ROAD_QUERY}",
                        days=days, max_results=max_results)
     items, counts = [], {"blocked": 0, "damaged": 0, "checkpoint": 0, "reopened": 0}
-    dropped = duplicates = 0
+    dropped = duplicates = stale = low_source = 0
     for it in news["items"]:
         blob = f"{it.get('title','')} {it.get('snippet','')}"
-        # Relevance first: an item about another country, or about shipping
+        # Publisher first: a social post or travel-wiki index is nobody's
+        # reporting, however well it matches the road topic below.
+        if not source_is_admissible(it.get("source") or it.get("url")):
+            low_source += 1
+            continue
+        # Relevance next: an item about another country, or about shipping
         # rather than roads, must not reach the classifier at all.
         if not road_item_is_relevant(blob, country, place):
             dropped += 1
             continue
+        # Then recency: an item published outside the requested window is dropped
+        # outright; an undated one is kept but flagged so the popup can say so.
+        window = road_date_window(it, days)
+        if window == "out":
+            stale += 1
+            continue
+        if window == "undated":
+            it = dict(it, undated=True)
         status, tags = classify_road(blob)
         if status == "unclear":
             continue                       # no road language at all — drop the noise
@@ -558,7 +663,8 @@ def tavily_roads(key, country, crisis, days=60, max_results=10, place=None):
     signal = max(0.0, min(1.0, score / ROAD_SATURATE))
     return {"answer": news.get("answer"), "items": items, "counts": counts,
             "signal": round(signal, 3), "considered": len(news["items"]),
-            "off_topic": dropped, "duplicates": duplicates, "query_days": days}
+            "off_topic": dropped, "duplicates": duplicates, "stale": stale,
+            "low_source": low_source, "query_days": days}
 
 # ---- ArcGIS drive-time service areas (isochrones) -----------------------
 # The road-access signal above is derived from news prose, which carries no
