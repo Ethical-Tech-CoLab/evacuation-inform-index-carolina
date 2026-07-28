@@ -64,14 +64,19 @@ carry a dateline, so it cannot merge two distinct blockages — the error this
 tool must not make. Verified on synthetic pairs (same dateline merges; same
 agency but different city does not).
 
-**Still open — the stored Syria pair is not merged.** Only one item in the whole
-snapshot carries an extractable dateline: the Greenwich rerun. The AP *original*
-that seeded it has a snippet made of page navigation ("Test Your News I.Q. …
-Elections …"), not the article body, so no dateline can be read from it and the
-two do not share a key. This is a Tavily content-extraction artifact, not a flaw
-in the rule. Re-fetching Syria (already on the item-8 re-fetch list) with cleaner
-snippets is what would let the dateline rule collapse the pair and bring the
-0.76 signal down. The rule will catch clean syndication as soon as it appears.
+**The Syria pair is gone, but the rule is still unexercised.** The item-8
+re-fetch replaced Syria's item set outright — the AP/Greenwich pair is no longer
+returned at all, and Syria now reads 3 items at 0.56 with `duplicates: 0`. So
+the pair that motivated this is no longer distorting the map, but it was removed
+by re-fetching rather than by the dedup rule, which never fired on it.
+
+**Still open: no live item anywhere carries an extractable dateline.** All three
+Syria snippets return `None` from `_wire_dateline`, as does everything else in
+the snapshot — Tavily's snippets are lede text or page furniture, not the
+article body with its dateline. The rule is therefore verified only against
+synthetic pairs. Treat it as untested in production until a real dispatch
+arrives with its dateline intact; if none ever does, the rule is dead code and
+the honest fix is matching on something Tavily actually returns.
 
 ### 4. Cross-crisis duplicates are invisible — **CLOSED 2026-07-28**
 
@@ -100,6 +105,10 @@ keyword classifier has no notion of what the *sentence* is about.
 another regex. That is a real cost decision — one call per item on top of the
 existing Tavily credit — and should be weighed against simply showing fewer,
 better-sourced items.
+
+*Note (2026-07-28): still live after the item-8 re-fetch. The same CENTCOM
+airstrike item came back and is still one of Syria's three, so this is now the
+most visible open defect on the map — a killing reported as a road blockage.*
 
 ### 6. Attribution: the pin names a party, not a place
 
@@ -138,7 +147,14 @@ The new items arrived through the item 1–4 gates, which dropped 38
 out-of-window and 55 inadmissible-source items that would otherwise have
 reached the map.
 
-### 8. 22 crises should be re-fetched after the gate changes
+*Correction, same day:* this first pass ran before `snapshot_roads.py` was
+anchored on the curated `place` term, so 30 of the 62 were searched as bare
+countries under a looser place gate and were under-counted — the West Bank
+returned nothing here and 5 items at 0.90 once re-fetched properly. The
+coverage claim (104 searched, 0 unsearched) stands; the pin counts in the
+paragraph above are superseded by the 14 pins that survived the re-fetch.
+
+### 8. 22 crises should be re-fetched after the gate changes — **CLOSED 2026-07-28**
 
 `rescore_roads.py` can only ever *remove* items — anything the old gate rejected
 was never written to disk. Crises whose alias set has since expanded were
@@ -149,16 +165,25 @@ As of 2026-07-28 (22, ~22 credits): Afghanistan, Burkina Faso, CAR, Cameroon,
 Chad, DRC, Ethiopia, Haiti, Lebanon, Mali, Mozambique, Myanmar, Niger, Nigeria,
 Palestine, Somalia, South Sudan, Sudan, Syria, Ukraine, Venezuela, Yemen.
 
-Two are worth doing first regardless of the alias question: **Syria**, whose
-re-fetch is what would let the item-3 dateline rule collapse the AP/Greenwich
-pair and bring the 0.76 down, and **Ukraine**, whose 0.96 is now the highest
-signal on the map on the strength of a single unreviewed fetch.
+**Fixed.** All 22 re-fetched under the current gates and alias sets (~22
+credits, via the new `--only`). The set was computed by excluding the 14 that
+the same day's `--missing-place` run had already refreshed, so nothing was paid
+for twice.
+
+Both flagged crises moved, and downward: **Syria** 0.76 → 0.56 (the AP/Greenwich
+duplicate pair is simply no longer returned — see item 3) and **Ukraine**
+0.96 → 0.76. Neither was under-counted as feared; both were over-counted on
+stale item sets. Four crises gained a first report (DRC, Mali, Niger, Burkina
+Faso, 0.2 each) and Lebanon lost its only one.
+
+`rescore_roads.py` will name a fresh list whenever the alias sets next expand;
+this is a recurring chore, not a one-off.
 
 ---
 
 ## Map
 
-### 9. Most of the nine road pins are country-level stand-ins
+### 9. Most of the fourteen road pins are country-level stand-ins
 
 The pin sits at the crisis, never at the blockage, because news prose carries no
 coordinates — that is inherent and the popup says so. But most crises are
