@@ -91,6 +91,12 @@ def main():
         window_days = roads.get("query_days", 60)
         now = fetched_at(path, roads, as_of)
         anchors.add(now.strftime("%Y-%m-%d"))
+        if not roads.get("fetched") and not dry:
+            # Persist the anchor, so the git-date fallback is used once per
+            # file at most: any later commit touching the file (this script
+            # included) would otherwise move the window forward.
+            roads["fetched"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+            json.dump(d, open(path, "w", encoding="utf-8"), ensure_ascii=False)
         kept, counts = [], {"blocked": 0, "damaged": 0, "checkpoint": 0, "reopened": 0}
         dupes = expired = lowsrc = 0
         for it in roads.get("items") or []:
@@ -118,7 +124,16 @@ def main():
                 dupes += 1
                 continue
             counts[status] += 1
-            kept.append(dict(it, status=status, tags=tags))
+            it = dict(it, status=status, tags=tags)
+            # Attribution: the item may be in this crisis only because its
+            # country is named as a party to a closure somewhere else.
+            it.pop("elsewhere", None)
+            elsewhere = server.foreign_subplace(
+                f"{server._strip_publisher(it.get('title'))} {it.get('snippet','')}",
+                country, place, it.get("source"))
+            if elsewhere:
+                it["elsewhere"] = elsewhere
+            kept.append(it)
 
         score = sum(server.ROAD_WEIGHTS[s] * n for s, n in counts.items())
         signal = round(max(0.0, min(1.0, score / server.ROAD_SATURATE)), 3)

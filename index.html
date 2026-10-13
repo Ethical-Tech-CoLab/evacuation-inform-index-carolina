@@ -1625,7 +1625,8 @@ function roadsHTML(r){
   items.forEach(it=>{
     const st=ROAD_STATUS[it.status]||{label:it.status,cls:'',icon:'•'};
     const amb=(it.tags||[]).length>1 ? `<span class="ramb" title="Matched both obstruction and reopening language">mixed signals</span>` : '';
-    h+=`<div class="news road"><span class="rpill ${st.cls}">${st.icon} ${st.label}</span>${amb}
+    const elsewhere=it.elsewhere?`<span class="ramb" title="This crisis's country is named in the report, but the route described is in ${esc(it.elsewhere)}. Counted here because the country is a party to it, not because the road is here.">route in ${esc(it.elsewhere)}</span>`:'';
+    h+=`<div class="news road"><span class="rpill ${st.cls}">${st.icon} ${st.label}</span>${amb}${elsewhere}
       <a href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener noreferrer">${esc(it.title)}</a>
       <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):(it.undated?' · undated':'')}</div>
       ${it.snippet?`<p>${esc(it.snippet)}…</p>`:''}</div>`;
@@ -1668,9 +1669,10 @@ function layerNote(html){
    country centroids, putting the Mindanao pin in the sea off Luzon and the
    Lebanon pin inside Syria.
 
-   The coverage note matters as much as the pins. The road search has run for
-   42 of 104 crises; the other 62 have never been looked at. An unpinned crisis
-   is therefore ambiguous, and on a map about whether people can get out, the
+   The coverage note matters as much as the pins. The road search has now run
+   for all 104 crises (it once covered 42, with 62 never looked at), so an
+   unpinned crisis means one thing: searched, nothing found. The note still
+   states the split, because on a map about whether people can get out the
    silent reading — "no pin, roads fine" — is the dangerous one. */
 let _roadsData=null, _roadsLoaded=false;
 
@@ -1695,7 +1697,8 @@ function roadPinPopup(c){
     const s=ROAD_STATUS[it.status]||{label:it.status,cls:'',icon:'•'};
     const amb=(it.tags||[]).length>1?`<span class="ramb" title="Matched both obstruction and reopening language">mixed signals</span>`:'';
     const dup=(it.also_in||[]).length?`<span class="ramb" title="The same report is also counted under: ${esc(it.also_in.join(', '))}">also counted under ${esc(it.also_in.join(', '))}</span>`:'';
-    h+=`<div class="news road"><span class="rpill ${s.cls}">${s.icon} ${s.label}</span>${amb}${dup}
+    const elsewhere=it.elsewhere?`<span class="ramb" title="This crisis's country is named in the report, but the route described is in ${esc(it.elsewhere)}. Counted here because the country is a party to it, not because the road is here.">route in ${esc(it.elsewhere)}</span>`:'';
+    h+=`<div class="news road"><span class="rpill ${s.cls}">${s.icon} ${s.label}</span>${amb}${dup}${elsewhere}
       <a href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener noreferrer">${esc(it.title)}</a>
       <div class="m">${esc(it.source||'')}${it.date?' · '+fmtDate(it.date):(it.undated?' · undated':'')}</div></div>`;
   });

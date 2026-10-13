@@ -383,6 +383,76 @@ def _place_tokens(country, place=None):
     return toks
 
 
+# Sub-national names in PLACE_ALIASES, keyed back to the country they are in.
+# Built from the alias table rather than written twice: an alias is a country
+# name if the key contains it or it is a stem of the key ("ukrain", "afghan"),
+# or a demonym listed here; everything else is a town or region.
+_COUNTRY_LEVEL_ALIASES = {"congo", "central african", "palestin", "lebanese",
+                          "haitian", "burkina"}
+
+
+def _is_country_alias(alias, country):
+    a, c = alias.lower(), country.lower()
+    return (a in _COUNTRY_LEVEL_ALIASES or a in c
+            or any(w.startswith(a) for w in c.split()))
+
+
+SUBPLACE_COUNTRY = {}
+for _country, _aliases in PLACE_ALIASES.items():
+    for _a in _aliases:
+        if not _is_country_alias(_a, _country):
+            SUBPLACE_COUNTRY.setdefault(_a.lower(), _country)
+# The curated sub-national theatres, which PLACE_ALIASES does not cover.
+for _key, _country in (("mindanao", "Philippines"), ("gaza", "Palestine"),
+                       ("west bank", "Palestine"), ("cabo delgado", "Mozambique"),
+                       ("cox's bazar", "Bangladesh"), ("darién", "Panama")):
+    for _a in SUBPLACE_ALIASES[_key]:
+        SUBPLACE_COUNTRY.setdefault(_a.lower(), _country)
+# "far north" (Cameroon) and "sahel region" (Burkina Faso) are generic enough
+# to appear in another country's story without locating anything.
+for _generic in ("far north", "sahel region"):
+    SUBPLACE_COUNTRY.pop(_generic, None)
+
+
+def _strip_publisher(title):
+    """Drop a headline's trailing " - Publisher" / " | Publisher" segment."""
+    return re.sub(r"\s[-|\u2022\u2013\u2014]\s[^-|\u2022\u2013\u2014]{2,40}$", "", title or "")
+
+
+def foreign_subplace(text, country, place=None, source=None):
+    """Where the road being described lies in another country, say which.
+
+    Returns a label like "Tigray (Ethiopia)" when the item reaches this crisis
+    only through its country's name and names a sub-national area of a
+    different country; otherwise None. The gate itself is right to pass such an
+    item — Eritrea really is in a story about routes into Tigray, as a party
+    closing them — but the access it describes is not in Eritrea, and the pin
+    should say so. Nothing here changes whether an item is kept or counted.
+
+    Sub-national crises never need this: their gate already requires a name
+    inside the curated theatre.
+    """
+    if place:
+        return None
+    t = (text or "").lower()
+    if source:
+        # "The Jerusalem Post" in a headline suffix is a publisher, not a place.
+        t = t.replace(source.lower(), " ")
+    own = {a.lower() for a in PLACE_ALIASES.get(country, ())
+           if not _is_country_alias(a, country)}
+    if _match_tokens(t, own):
+        return None                      # a place inside this country is named
+    found = {}
+    for alias, other in SUBPLACE_COUNTRY.items():
+        if other == country or alias in own:
+            continue
+        if re.search(_tok_pattern(alias), t):
+            found.setdefault(other, alias)
+    if not found:
+        return None
+    return "; ".join(f"{alias.title()} ({other})" for other, alias in sorted(found.items()))
+
+
 def _place_only_tokens(country, place=None):
     """Tokens that identify the sub-national area *and not merely the country*.
 
@@ -673,7 +743,13 @@ def tavily_roads(key, country, crisis, days=60, max_results=10, place=None):
             duplicates += 1
             continue
         counts[status] += 1
-        items.append(dict(it, status=status, tags=tags))
+        it = dict(it, status=status, tags=tags)
+        elsewhere = foreign_subplace(
+            f"{_strip_publisher(it.get('title'))} {it.get('snippet','')}",
+            country, place, it.get("source"))
+        if elsewhere:
+            it["elsewhere"] = elsewhere
+        items.append(it)
     score = sum(ROAD_WEIGHTS[s] * n for s, n in counts.items())
     signal = max(0.0, min(1.0, score / ROAD_SATURATE))
     return {"answer": news.get("answer"), "items": items, "counts": counts,

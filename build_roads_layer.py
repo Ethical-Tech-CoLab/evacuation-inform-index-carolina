@@ -46,7 +46,8 @@ ORDER = ["blocked", "damaged", "checkpoint", "reopened"]
 
 # The map popup shows the same fields the drawer does; anything else in an item
 # is search-engine bookkeeping the reader has no use for.
-ITEM_FIELDS = ("title", "url", "date", "source", "status", "tags", "undated")
+ITEM_FIELDS = ("title", "url", "date", "source", "status", "tags", "undated",
+               "elsewhere")
 
 
 def load_geo():
