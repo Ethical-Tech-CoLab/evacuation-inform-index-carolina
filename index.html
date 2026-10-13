@@ -66,7 +66,9 @@
   .controls select{width:100%;padding:5px;border:1px solid var(--line);border-radius:6px;font-size:13px}
   .controls .note{margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4}
   .lp h3{margin:0 0 2px;font-size:15px}
-  .lp .edi{font-size:13px;font-weight:700;margin:6px 0}
+  .lp .pair{font-size:13.5px;margin:6px 0 2px}
+  .lp .pair b{font-size:15px}
+  .lp .edi{font-size:13px;font-weight:700;margin:2px 0 6px}
   .lp table{border-collapse:collapse;width:100%;font-size:12px;margin-top:4px}
   .lp td{padding:2px 6px;border-top:1px solid #eee}
   .lp td:last-child{text-align:right;font-variant-numeric:tabular-nums}
@@ -1403,9 +1405,14 @@ function popupCard(d,idx,metric){
                 : e<0.95 ? '<span class="pill" style="background:#2c7fb8">Evacuation favored</span>'
                 : '<span class="pill" style="background:#888">Near parity</span>';
   const cs=ceraiScores(d,null,null);
+  // The pair leads and the ratio follows. The paper's own finding (S4.2a) is
+  // that the quotient compresses toward 1.0 in exactly the most severe crises,
+  // so the two components are the measurement and the EII is a pointer into
+  // them; the card is ordered to read that way.
   return `<div class="lp"><h3>${esc(d.crisis)}</h3>
     ${scopeChip(d)}
-    <div class="edi">EII = ${e.toFixed(2)} &nbsp;${verdict}</div>
+    <div class="pair">Risk of staying <b>${d.rss.toFixed(1)}</b> &nbsp;·&nbsp; Risk of evacuating <b>${d.rse.toFixed(1)}</b> <span class="cg-sub" style="display:inline">(INFORM Conditions · Complexity, 1–5)</span></div>
+    <div class="edi">EII = ${e.toFixed(2)} &nbsp;${verdict} <span class="cg-sub" style="display:inline">evacuate ÷ stay</span></div>
     ${compressionNote(d)}
     <div class="cerai-mini">CERAI · Endangerment <b>${Math.round(cs.endanger)}%</b> <span class="cband">${cs.band}</span> &nbsp;·&nbsp; Feasibility <b>${Math.round(cs.feas)}%</b></div>
     <table>

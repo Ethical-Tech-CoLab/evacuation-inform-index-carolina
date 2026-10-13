@@ -6,3 +6,6 @@ venv/
 
 snapshot_run.log
 .DS_Store
+
+# Local scratch pages (_preview.html, _wntest.html and the like)
+_*.html

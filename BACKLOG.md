@@ -95,9 +95,9 @@ machinery is in place and verified against a synthetic set for when one recurs.
 While here, `undated` was added to the layer's `ITEM_FIELDS` so the flag from
 item 1 reaches the map-layer popup, not just the drawer.
 
-### 5. Some items are not about roads at all
+### 5. Some items are not about roads at all — **CLOSED 2026-10-12**
 
-Syria carries "Airstrike killed senior ISIS commander in Syria" as `blocked`.
+Syria carried "Airstrike killed senior ISIS commander in Syria" as `blocked`.
 It passes the subject gate on incidental words and the place gate correctly. The
 keyword classifier has no notion of what the *sentence* is about.
 
@@ -110,7 +110,26 @@ better-sourced items.
 airstrike item came back and is still one of Syria's three, so this is now the
 most visible open defect on the map — a killing reported as a road blockage.*
 
-### 6. Attribution: the pin names a party, not a place
+**Fixed without a model call.** The item passed the subject gate on one word,
+"escape" (ISIS detainees had escaped), and the status pattern on "base
+closures". The flight verbs `escape` / `flee` / `fleeing` are now out of
+`SIEGE_SUBJECT` in [server.py](server.py): they are in every conflict story,
+and an item in which people flee *by road* names the road and passes on
+`ROAD_SUBJECT` anyway. Re-running `rescore_roads.py` removed exactly that one
+item across the whole snapshot (Syria 0.56 → 0.36, 3 items → 2) and nothing
+else. The map still carries 14 pins. The classifier still has no notion of
+what a sentence is about, and the next such item will need its own word; the
+model-call option stays on the table if that recurs.
+
+Found while re-running: `rescore_roads.py` measured the 60-day window from
+*today*, so a rescore 76 days after the fetch dropped all 26 items as stale.
+The window is now measured from each snapshot's fetch time (`roads.fetched`,
+recorded by new fetches and stamped on the existing files from their commit
+date; `--as-of` overrides). Fetches also record the alias set they ran under,
+so the end-of-run re-fetch list names only crises whose aliases have actually
+changed instead of all 22 forever.
+
+### 6. Attribution: the pin names a party, not a place — **CLOSED 2026-10-12**
 
 Eritrea's only report concerns routes into **Tigray, Ethiopia**; Eritrea appears
 because it is named as one of the parties closing them. The place gate passes it
@@ -123,6 +142,17 @@ the country name and the item names another country's sub-national area.
 *Note (2026-07-28): the specific Eritrea item above was a Facebook post and has
 since been removed by the item-2 source gate, so there is no live instance right
 now — but the attribution problem itself is unchanged and will recur.*
+
+**Flagged, not dropped.** [`foreign_subplace`](server.py) labels an item that
+reaches a country-level crisis only through the country's name while naming a
+town or region of *another* country, using the sub-national entries of
+`PLACE_ALIASES` / `SUBPLACE_ALIASES` keyed back to their country. The item is
+still counted (the country really is a party); the drawer and the map popup
+carry a "route in Tigray (Ethiopia)" badge with the reason in its tooltip. The
+headline's " - Publisher" suffix is stripped first, because "The Jerusalem
+Post" on a Thailand item is not a place. Verified on the synthetic Eritrea /
+Tigray text; no stored item trips it today. Sub-national crises are exempt,
+since their gate already demands a name inside the theatre.
 
 ---
 
@@ -198,11 +228,14 @@ crisis, from INFORM or hand-curated into `geo/locations.csv`.
 
 ## Housekeeping
 
-- `_preview.html` and `_wntest.html` are untracked local scratch files. Decide
-  whether either belongs in the repo or in `.gitignore`.
+- ~~`_preview.html` and `_wntest.html` are untracked local scratch files. Decide
+  whether either belongs in the repo or in `.gitignore`.~~ Done 2026-10-12:
+  neither belongs in the repo; `_*.html` is in `.gitignore`.
 - `data.js` still carries the superseded country-centroid `lat`/`lng`. They are
   no longer read by the map, but they are what `geo/build_geo.py` measures
-  corrections against, so removing them is not free.
+  corrections against, so removing them is not free. *Recorded, left as is:
+  the header comment in `data.js` says the fields are superseded, and the
+  correction measurement is worth more than the few bytes.*
 
 ---
 
@@ -301,15 +334,23 @@ claimed as the project's own.
 
 These were raised in *What's missing* and are not closed by the current pass:
 
-- **Sensitivity analysis beyond the floor.** The 0.06 multiplier step is still
-  uncharacterised. (The reviewer also asked about the 10-to-5 rescaling; that
-  question is void — no such rescaling exists, see the credibility section
-  above.) A reader still cannot tell whether the rankings are robust or
-  knife-edge.
+- ~~**Sensitivity analysis beyond the floor.** The 0.06 multiplier step is still
+  uncharacterised.~~ **CLOSED 2026-10-12.** New **§4.2c**, computed by
+  `sensitivity_step.py` over the 104 crises. The step never enters the EII
+  ratio, so the ranking is identical under every profile setting; what it
+  moves is the CERAI band and the protection-gap flag, and those are
+  knife-edge: one upward toggle at 0.06 moves 24 of 104 crises across a band
+  and lifts the Extreme-or-above count from 26 to 39; the 1.3 cap, reached at
+  five toggles, moves 72 and doubles the gap count (22 → 44). The cap, not the
+  step, is the binding constraint. (The reviewer also asked about the 10-to-5
+  rescaling; that question is void — no such rescaling exists, see the
+  credibility section above.)
 - **Comparison against fuller CERAI outputs.** The most natural available
-  validation, and it needs CERAI itself.
-- **§4.2a's own finding, unaddressed structurally.** The ratio compresses toward
-  1.0 exactly in the severity-5 crises — most confident where least meaningful.
-  The paper now says so and warns at the point of reading, but the headline
-  metric is still a ratio. Demoting it beneath the two-component display, as the
-  reviewer suggested, remains a live design question rather than a settled one.
+  validation, and it needs CERAI itself. *Still open; nothing local can close it.*
+- ~~**§4.2a's own finding, unaddressed structurally.**~~ **CLOSED 2026-10-12.**
+  The crisis card now leads with the pair (Risk of staying · Risk of
+  evacuating, on the INFORM scale) and the EII follows it with its definition
+  beside it; §4.1.1 records the change. The map colour ramp still uses the
+  ratio, since a ramp needs one number, and the metric selector already offers
+  either component instead. Whether the ratio should go from the ramp too is
+  the part that stays open.

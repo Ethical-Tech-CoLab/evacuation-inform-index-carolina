@@ -133,7 +133,7 @@ Two safeguards apply. Ratios become unstable as the denominator approaches zero,
 
 The honest position is that the division is a *comparison device*, not a measurement. What the EDI supports is ordering and sign — whether evacuation scores worse than staying, and roughly how far apart they sit — not arithmetic on the result. Two consequences follow, and the prototype accepts both. Differences of a few hundredths between crises carry no meaning and should not be ranked against each other. And the EDI must never be averaged, summed across crises, or fed into a further calculation, because those operations require exactly the ratio-scale property the inputs lack.
 
-This is a real limitation rather than a resolved one. The alternative that would remove it — reporting the two components as a labelled pair and abandoning the quotient — is genuinely worth considering, and 4.2a's finding that the ratio compresses toward 1.0 precisely in the most severe crises strengthens the case for it. The quotient is retained because a single ordered number is what makes 104 crises comparable at a glance, which is the tool's purpose; but it is retained on the understanding that it is a pointer, not a measurement.
+This is a real limitation rather than a resolved one. The alternative that would remove it — reporting the two components as a labelled pair and abandoning the quotient — is genuinely worth considering, and 4.2a's finding that the ratio compresses toward 1.0 precisely in the most severe crises strengthens the case for it. The quotient is retained because a single ordered number is what makes 104 crises comparable at a glance, which is the tool's purpose; but it is retained on the understanding that it is a pointer, not a measurement. The crisis card now reads in that order: the pair, Risk of staying and Risk of evacuating on their INFORM scale, is the first line, and the EII follows it with its definition beside it. The map colouring still uses the ratio, since a colour ramp needs one number, and the metric selector offers either component in its place.
 
 **4.1.2 The ratio and the refusal to collapse.** Section 5 argues that danger and feasibility must never be collapsed into one score, while this section foregrounds a single ratio. The tension is worth stating directly rather than leaving to the reader. The EDI is a pointer that directs attention to crises where the staying/leaving comparison is unusual; it is not a verdict about either dimension, and it is not the object of section 5's critique, because both components remain visible wherever it is shown and neither is ever absorbed into it. The collapse section 5 forbids is the one that would let low feasibility quietly reduce apparent danger, extinguishing an obligation. A ratio that always carries its own numerator and denominator on its face cannot do that. Where the ratio does mislead, it is for the reasons in 4.2a — the proxy beneath it — not because it is a single number.
 
@@ -205,6 +205,22 @@ The review notes that the index is described but never run. Two crises, taken fr
 4. **EDI = 3.53 / 1.36 = 2.60** — the highest in the index.
 
 *Reading it:* taken at face value the index says evacuation is two and a half times riskier than remaining. Taken correctly, it says the affected population's conditions are relatively mild while the operating environment in Yemen is severe — and the latter is a fact about the war, not about the flood. This is the single case a user is most likely to misread, and it is the reason 4.2a exists.
+
+### 4.2c Sensitivity of the vulnerability step
+
+The review asked whether the rankings are robust to the 0.06 step by which each Dimension 3 toggle moves the multiplier. The first part of the answer is structural. The multiplier never enters the EII ratio: the ranking of the 104 crises is identical under every setting of the profile, because the profile scales the CERAI endangerment and feasibility percentages after the ratio is formed. The step cannot reorder the index. What it can do is move a crisis across a display band or trip the protection-gap flag, which fires when endangerment reaches 75 per cent while feasibility is at or below 40. Those are the quantities the step is tested against here, recomputed from the INFORM inputs alone (no live ACLED, weather or road penalty) by `sensitivity_step.py` in the repository.
+
+| upward toggles | multiplier | crises at Extreme or above (of 104) | protection gaps | crises whose band changed |
+|---:|---:|---:|---:|---:|
+| 0 | 1.00 | 26 | 22 | 0 |
+| 1 | 1.06 | 39 | 27 | 24 |
+| 2 | 1.12 | 41 | 30 | 31 |
+| 3 | 1.18 | 46 | 35 | 50 |
+| 5 or more | 1.30 (cap) | 59 | 44 | 72 |
+
+The display is not robust to a single toggle. One upward factor at the 0.06 step moves 24 of 104 crises into a different band and lifts the count at Extreme or above from 26 to 39, because the endangerment distribution is dense just under the 75 per cent line. At the cap, which five toggles reach, 72 crises sit in a different band from where they started and the protection-gap flag fires on 44 crises rather than 22. The step size itself matters less than the cap. Halving it to 0.03 gives the same figures one toggle later (two toggles at 0.03 are one at 0.06), and doubling it to 0.12 reaches the cap at three toggles instead of five; the band is the binding constraint, and every step size ends at the same 59, 44 and 72 once it saturates.
+
+Two conclusions follow. The ranking claim in the review is answered in the model's favour: no setting of the profile changes which crisis is above which. The display claim is answered against it: the bands and the protection-gap flag are knife-edge under the profile, which is a further reason to read the profile as a scenario rather than a measurement, and it sharpens the point made in 9.12.1 that the equal 0.06 step is a placeholder. A validated step would have to be chosen with the band thresholds in view, since the two together decide how many crises a single toggle moves across a line that the tool labels an IHL threshold.
 
 ### 4.3 The three layer architecture
 
@@ -340,7 +356,7 @@ The distinction matters. A demographic list alone would treat vulnerability as a
 
 The vulnerability profile described in 5.6 is the part of the tool most likely to be read as saying something about a particular person, and it is the part least able to. Twelve toggles each move a single multiplier by 0.06 within a band of 0.7 to 1.3. Every property of that construction is a limitation.
 
-**9.12.1 Equal increments assert an equivalence nobody has established.** Being non ambulatory and being a linguistic minority move the score by the same 0.06. No evidence supports that parity. It was a placeholder chosen so that the mechanism could be demonstrated, and it has not been replaced by anything better.
+**9.12.1 Equal increments assert an equivalence nobody has established.** Being non ambulatory and being a linguistic minority move the score by the same 0.06. No evidence supports that parity. It was a placeholder chosen so that the mechanism could be demonstrated, and it has not been replaced by anything better. Section 4.2c measures what the placeholder does to the display: one toggle moves 24 of 104 crises across a band boundary.
 
 **9.12.2 The band saturates at five factors.** Five upward toggles reach the 1.3 ceiling. The sixth through the tenth change nothing at all. The households carrying the most compounded vulnerability — an elderly, disabled, undocumented, non literate member of a targeted minority — are precisely where the model stops discriminating between cases.
 

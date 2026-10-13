@@ -217,21 +217,24 @@ Coverage is the part that matters, and the layer states it:
 
 | | crises |
 |---|---:|
-| Searched, reports found (pinned) | 8 |
-| Searched, nothing found | 34 |
-| **Never searched** | **62** |
+| Searched, reports found (pinned) | 14 |
+| Searched, nothing found | 90 |
+| **Never searched** | **0** |
 | Total | 104 |
 
-An unpinned crisis is therefore ambiguous between *searched, nothing found* and
-*never searched*, and on a map about whether people can get out the silent
-reading — no pin, roads fine — is the dangerous one. Run
-`python3 snapshot_roads.py` to close the gap (1 Tavily credit per crisis), then
-re-run `python3 build_roads_layer.py` and commit `snapshot/`.
+Every crisis has now been searched, so an unpinned crisis means one thing:
+searched, nothing found. The layer still states the split, because on a map
+about whether people can get out the silent reading, no pin so roads fine, is
+the dangerous one. When crises are added to the INFORM export, run
+`python3 snapshot_roads.py` for the new ones (1 Tavily credit per crisis), then
+`python3 build_roads_layer.py`, and commit `snapshot/`. The 60-day window is
+measured from each snapshot's fetch time, so `python3 rescore_roads.py` can
+re-apply the gates to stored items at any later date without ageing them out.
 
 **What the layer still gets wrong** is written down rather than left implicit:
-stale items shown under a "last 60 days" label, unchecked source quality, wire
-copy counted twice where it was re-headlined, and items that are not about roads
-at all. See **[BACKLOG.md](BACKLOG.md)**.
+wire-copy de-duplication that has never fired on a live item, a pin that stands
+in for a whole country, and a keyword classifier that reads headline wording
+rather than the sentence. See **[BACKLOG.md](BACKLOG.md)**.
 
 ## Running locally
 

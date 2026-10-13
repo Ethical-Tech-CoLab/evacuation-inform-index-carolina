@@ -45,6 +45,9 @@ RETIRED_CLAIMS = [
     (r"\b42 of the 104\b|\b62 (?:crises )?(?:have )?never been searched\b",
      "the 42-of-104 road coverage split, closed 2026-07-28 — all 104 are "
      "searched"),
+    (r"then leads with a single ratio",
+     "the claim that the card leads with the ratio, retired 2026-10-12 — the "
+     "crisis card now leads with the two components and the EII follows"),
     (r"FLARE model developed by the Global Fund",
      "the FLARE attribution for the two-witness standard, withdrawn "
      "2026-07-28 — FLARE is an ML forced-labour classifier, not a "
