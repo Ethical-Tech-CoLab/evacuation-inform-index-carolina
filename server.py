@@ -210,8 +210,15 @@ ROAD_SUBJECT = (r"\broad(s|way|ways|block|blocks)?\b|\bhighway(s)?\b|\bbridge(s)
 # gate on its own.
 SIEGE_SUBJECT = (r"\bbesieg(e|ed|ing)?\b|\bsiege\b|\bencircl(e|ed|ing|ement)\b|"
                  r"\bsurrounded\b|\bcut off\b|\bcut-off\b|\bsealed off\b|"
-                 r"\btrapped\b|no way out|\bescape\b|\bfleeing\b|\bflee\b|"
-                 r"\bstranded\b|\bblockade(d)?\b")
+                 r"\btrapped\b|no way out|\bstranded\b|\bblockade(d)?\b")
+# Flight verbs ("escape", "flee", "fleeing") used to sit in this list and are
+# deliberately absent now. They are in every conflict story whether or not a
+# road is involved: a CENTCOM airstrike item reached Syria's pin as "blocked"
+# because ISIS detainees had "escaped" and US "base closures" matched the status
+# pattern. An item in which people flee *by road* names the road and passes on
+# ROAD_SUBJECT; an item in which they merely flee is not about access at all.
+# This is a negative gate on the snippet, not a model call over it, and it is
+# all that the stored items needed (see BACKLOG item 5).
 # Maritime and air disruption uses the same verbs ("blockade", "closed") but
 # says nothing about whether people can drive out.
 NON_ROAD_SUBJECT = (r"\bnaval\b|\bmaritime\b|\bshipping\b|\bvessel(s)?\b|\btanker(s)?\b|"
@@ -600,7 +607,7 @@ def _is_duplicate(item, kept):
     return False
 
 
-def road_date_window(item, days):
+def road_date_window(item, days, now=None):
     """Where an item's published_date falls relative to a `days`-day window.
 
     Returns 'in', 'out', or 'undated'. Tavily's `days` parameter is not honoured
@@ -608,6 +615,11 @@ def road_date_window(item, days):
     closure off a map read for whether people can leave today. Undated items are
     surfaced as such rather than silently kept — an unplaceable date is a fact
     the reader should see, not one the tool should paper over.
+
+    `now` is the moment the window is measured from: the fetch time, by default
+    the current one. A re-filter of a stored snapshot must pass the time that
+    snapshot was taken, or every item ages out as the snapshot does and a
+    rescore months later silently empties the map.
     """
     raw = item.get("date")
     if not raw:
@@ -620,7 +632,10 @@ def road_date_window(item, days):
         return "undated"
     if dt.tzinfo is not None:                 # normalise to naive UTC to compare
         dt = (dt - dt.utcoffset()).replace(tzinfo=None)
-    return "in" if (datetime.utcnow() - dt) <= timedelta(days=days) else "out"
+    ref = now or datetime.utcnow()
+    if ref.tzinfo is not None:
+        ref = (ref - ref.utcoffset()).replace(tzinfo=None)
+    return "in" if (ref - dt) <= timedelta(days=days) else "out"
 
 
 def tavily_roads(key, country, crisis, days=60, max_results=10, place=None):
@@ -664,7 +679,14 @@ def tavily_roads(key, country, crisis, days=60, max_results=10, place=None):
     return {"answer": news.get("answer"), "items": items, "counts": counts,
             "signal": round(signal, 3), "considered": len(news["items"]),
             "off_topic": dropped, "duplicates": duplicates, "stale": stale,
-            "low_source": low_source, "query_days": days}
+            "low_source": low_source, "query_days": days,
+            # The alias set the place gate ran under. rescore_roads.py compares
+            # it with the current one to tell which crises a re-fetch would
+            # actually change, instead of naming every aliased crisis forever.
+            "aliases": list(PLACE_ALIASES.get(country, ())),
+            # When the window was measured, so a later re-filter of the stored
+            # result can measure it from the same moment.
+            "fetched": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
 
 # ---- ArcGIS drive-time service areas (isochrones) -----------------------
 # The road-access signal above is derived from news prose, which carries no

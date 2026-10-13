@@ -13,11 +13,20 @@ Gaza / West Bank aliases, for example) stays under-counted until it is
 re-fetched. Those are reported at the end so they can be refreshed when API
 credits allow.
 
+The recency window is measured from the time each snapshot was fetched, not
+from today: `roads.fetched` where the fetch recorded it, else the file's last
+git commit date, else its mtime. Measuring from today would age every stored
+item out as the snapshot aged, and a rescore run months later would empty the
+map while reporting nothing but "stale". `--as-of YYYY-MM-DD` overrides the
+anchor for every file.
+
 Usage:
     python3 rescore_roads.py --dry-run   # report changes, write nothing
     python3 rescore_roads.py             # apply
+    python3 rescore_roads.py --as-of 2026-07-28
 """
-import json, glob, os, re, sys
+import json, glob, os, re, subprocess, sys
+from datetime import datetime
 import server
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -45,9 +54,30 @@ def load_places():
             for slug, g in geo.items()}
 
 
+def fetched_at(path, roads, override=None):
+    """The moment this snapshot's window should be measured from."""
+    if override:
+        return override
+    raw = roads.get("fetched")
+    if raw:
+        return datetime.strptime(raw, "%Y-%m-%dT%H:%M:%SZ")
+    try:
+        out = subprocess.run(["git", "log", "-1", "--format=%cI", "--", path],
+                             cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+        if out:
+            return datetime.fromisoformat(out)
+    except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+        pass
+    return datetime.utcfromtimestamp(os.path.getmtime(path))
+
+
 def main():
     dry = "--dry-run" in sys.argv
+    as_of = None
+    if "--as-of" in sys.argv:
+        as_of = datetime.strptime(sys.argv[sys.argv.index("--as-of") + 1], "%Y-%m-%d")
     changed, stale = [], []
+    anchors = set()
     places = load_places()
 
     for path in sorted(glob.glob(os.path.join(OUT, "*.json"))):
@@ -59,6 +89,8 @@ def main():
         place = places.get(os.path.basename(path)[:-5])
 
         window_days = roads.get("query_days", 60)
+        now = fetched_at(path, roads, as_of)
+        anchors.add(now.strftime("%Y-%m-%d"))
         kept, counts = [], {"blocked": 0, "damaged": 0, "checkpoint": 0, "reopened": 0}
         dupes = expired = lowsrc = 0
         for it in roads.get("items") or []:
@@ -70,7 +102,7 @@ def main():
             if not server.road_item_is_relevant(blob, country, place):
                 continue
             # Recency: drop items published outside the stored window, flag undated.
-            w = server.road_date_window(it, window_days)
+            w = server.road_date_window(it, window_days, now)
             if w == "out":
                 expired += 1
                 continue
@@ -109,11 +141,23 @@ def main():
                 json.dump(d, open(path, "w", encoding="utf-8"), ensure_ascii=False)
 
         # Crises whose alias list grew were searched under a stricter gate than
-        # the one now in force, so their stored items may be incomplete.
-        if country in server.PLACE_ALIASES:
-            stale.append(country)
+        # the one now in force, so their stored items may be incomplete. A fetch
+        # records the alias set it ran under; a file without one predates that
+        # and is assumed current, because every aliased crisis was re-fetched
+        # under the current set on 2026-07-28 (backlog item 8) and is stamped
+        # here so the next expansion is detected.
+        current = list(server.PLACE_ALIASES.get(country, ()))
+        if current:
+            stored = roads.get("aliases")
+            if stored is None:
+                if not dry:
+                    roads["aliases"] = current
+                    json.dump(d, open(path, "w", encoding="utf-8"), ensure_ascii=False)
+            elif set(stored) != set(current):
+                stale.append(country)
 
-    print(f"{'[dry run] ' if dry else ''}{len(changed)} snapshots changed\n")
+    print(f"{'[dry run] ' if dry else ''}{len(changed)} snapshots changed "
+          f"(recency window measured from {', '.join(sorted(anchors))})\n")
     for name, country, b, a, n_before, n_after in sorted(
             changed, key=lambda r: -(r[2] or 0)):
         print(f"  {country:22} signal {b:<6} -> {a:<6} items {n_before} -> {n_after}")
